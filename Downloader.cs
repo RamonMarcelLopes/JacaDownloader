@@ -10,8 +10,16 @@ namespace JacaDownloader;
 // Wraps yt-dlp: metadata lookup and background download jobs.
 public static class Downloader
 {
-    public static readonly string DefaultDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Output IA", "Downloads");
+    // Where files go when no folder was chosen: the Music folder of whoever runs the app (This PC > Music).
+    public static readonly string DefaultDir = ResolveDefaultDir();
+
+    static string ResolveDefaultDir()
+    {
+        var music = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+        return !string.IsNullOrWhiteSpace(music)
+            ? music
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Music");
+    }
 
     static readonly HashSet<string> AllowedBrowsers = new() { "chrome", "edge", "firefox", "brave" };
 
