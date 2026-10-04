@@ -12,6 +12,10 @@ public class MainForm : Form
     const int ResizeBorder = 6;
     const int WM_NCCALCSIZE = 0x83;
     const int WM_NCHITTEST = 0x84;
+    const int WM_NCPAINT = 0x85;
+    const int WM_NCACTIVATE = 0x86;
+    const int DWMWA_NCRENDERING_POLICY = 2;
+    const int DWMNCRP_DISABLED = 1;
     const int WM_MOVING = 0x216;
     const int WS_MINIMIZEBOX = 0x20000;
     const int WS_MAXIMIZEBOX = 0x10000;
@@ -74,6 +78,17 @@ public class MainForm : Form
         }
     }
 
+    [DllImport("dwmapi.dll")]
+    static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    // Turns off the desktop compositor's frame rendering (shadow and light border) for this window.
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        var policy = DWMNCRP_DISABLED;
+        DwmSetWindowAttribute(Handle, DWMWA_NCRENDERING_POLICY, ref policy, sizeof(int));
+    }
+
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
@@ -132,6 +147,14 @@ public class MainForm : Form
             case WM_NCCALCSIZE when m.WParam != IntPtr.Zero:
                 m.Result = IntPtr.Zero;
                 return;
+
+            // Never let Windows paint its own frame (white strips and shadow) when focus changes.
+            case WM_NCPAINT:
+                m.Result = IntPtr.Zero;
+                return;
+            case WM_NCACTIVATE:
+                m.LParam = (IntPtr)(-1);
+                break;
 
             // Lets the user resize the borderless window from its edges.
             case WM_NCHITTEST when WindowState == FormWindowState.Normal:
