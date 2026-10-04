@@ -2,6 +2,7 @@
 bin/
 obj/
 dist/
+release/
 
 # Generated UI (rebuilt by build.bat) and local tooling files
 ui/out/
