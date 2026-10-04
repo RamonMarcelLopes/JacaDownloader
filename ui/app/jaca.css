@@ -1,7 +1,15 @@
 /* Additions for the real app behavior; the designer's rules live in globals.css. */
 
 /* Use the whole window width: the logo and sidebar hug the left edge instead of floating in a centered column. */
-.app-shell { max-width: none; padding: 20px 20px 20px 6px; }
+.app-shell { max-width: none; padding: 20px 20px 0 6px; }
+
+/* The sidebar, the footer line and the footer text reach the bottom edge of the window. */
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+.app-body { flex: 1 1 auto; }
+.tabs { min-height: 0; padding-bottom: 14px; }
+.main-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.main-col > .content { flex: 1 0 auto; width: 100%; }
+.main-col > footer { width: 100%; margin-top: 22px; padding-bottom: 14px; }
 
 /* Borderless window: a strip along the very top (full width, above the header) drags the window; the controls stay clickable. */
 body::before { content: ''; position: fixed; top: 0; left: 0; right: 12px; height: 60px; z-index: 0; -webkit-app-region: drag; }

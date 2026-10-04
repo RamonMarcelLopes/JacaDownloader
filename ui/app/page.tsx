@@ -721,6 +721,7 @@ export default function Page() {
         <button aria-label="Histórico" title="Histórico" className={tab === 'history' ? 'active' : ''} onClick={() => go('history')}><History size={18} />{history.length > 0 && <span className="tab-count">{activeCount > 0 ? activeCount : history.length}</span>}</button>
         <button className={`settings-tab ${tab === 'settings' ? 'active' : ''}`} aria-label="Configurações" title="Configurações" onClick={() => go('settings')}><SettingsIcon size={17} /></button>
       </nav>
+      <div className="main-col">
       <div className="content">
         {status && !status.ready && <div className={`tools-banner ${status.error ? 'failed' : ''}`}>{status.error ? <AlertCircle size={18} /> : <LoaderCircle className="spin" size={18} />}<span>{status.error ? `${status.message}: ${status.error}` : status.message}</span>{status.error && <button className="text-button" onClick={retryTools}>Tentar de novo</button>}</div>}
         {settings && <>
@@ -729,8 +730,9 @@ export default function Page() {
           <div hidden={tab !== 'settings'}><SettingsPage settings={settings} updateSettings={updateSettings} status={status} items={history} toast={toast} confirm={confirm} refresh={refresh} /></div>
         </>}
       </div>
+      <footer><span>Jaca Downloader</span><span>© {new Date().getFullYear()} Crocodile Development. All rights reserved</span></footer>
+      </div>
     </div>
-    <footer><span>Jaca Downloader</span><span>© {new Date().getFullYear()} Crocodile Development. All rights reserved</span></footer>
 
     {modal?.kind === 'confirm' && <Modal title={modal.title} onClose={closeModal}>
       <p className="modal-text">{modal.text}</p>

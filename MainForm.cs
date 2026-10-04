@@ -24,7 +24,8 @@ public class MainForm : Form
     const int WS_MAXIMIZEBOX = 0x10000;
     const int WS_THICKFRAME = 0x40000;
 
-    static readonly Size StartSize = new(1020, 860);
+    // The size the window opens at; it can be made smaller but never larger.
+    static readonly Size StartSize = new(1020, 982);
     static readonly string StatePath = Path.Combine(Tools.AppDataDir, "window.json");
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
