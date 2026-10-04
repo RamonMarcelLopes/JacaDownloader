@@ -53,6 +53,8 @@ public class MainForm : Form
         MaximumSize = StartSize;
         using (var icon = typeof(MainForm).Assembly.GetManifestResourceStream("app.ico")!)
             Icon = new Icon(icon);
+        // Always keep the web view profile in the app data folder, never next to the exe.
+        web.CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = Path.Combine(Tools.AppDataDir, "webview") };
         Controls.Add(web);
 
         var saved = LoadState();
@@ -258,8 +260,7 @@ public class MainForm : Form
     {
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(null, Path.Combine(Tools.AppDataDir, "webview"));
-            await web.EnsureCoreWebView2Async(env);
+            await web.EnsureCoreWebView2Async();
 
             var settings = web.CoreWebView2.Settings;
             settings.AreDevToolsEnabled = false;

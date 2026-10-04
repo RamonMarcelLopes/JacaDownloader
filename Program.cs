@@ -14,6 +14,9 @@ internal static class Program
     [STAThread]
     static void Main()
     {
+        // The web view profile always lives in the app data folder, never next to the exe.
+        Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(Tools.AppDataDir, "webview"));
+
         ApplicationConfiguration.Initialize();
         Store.Load();
 
