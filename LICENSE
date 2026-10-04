@@ -1,0 +1,98 @@
+Jaca Downloader License
+Use only - no modification - no sale
+
+Copyright (c) 2026 Crocodile Development. All rights reserved, except for the
+limited permissions granted below.
+
+
+1. Definitions
+
+"Software" means Jaca Downloader, including the source code in this repository,
+the compiled executable files, and any documentation, images and other files
+distributed with it.
+
+"You" means any person or organization using the Software.
+
+
+2. What you may do
+
+Subject to the terms of this license, you are granted a free, non-exclusive,
+revocable and non-transferable permission to:
+
+  a) download, install and run the Software, for any lawful purpose, personal
+     or professional;
+
+  b) copy and share unmodified copies of the Software with other people, free
+     of charge, as long as this license file and all copyright notices stay
+     with it;
+
+  c) read the source code in this repository, and build the Software from the
+     unmodified source code, for your own use.
+
+
+3. What you may not do
+
+You may not:
+
+  a) modify, adapt, translate or create derivative works of the Software or of
+     any part of its source code, and you may not distribute modified
+     versions of it;
+
+  b) decompile, disassemble or reverse engineer the Software, except where
+     applicable law expressly allows it despite this restriction;
+
+  c) sell, resell, rent, lease, sublicense, or otherwise charge money or any
+     other consideration for the Software or for access to it, and you may not
+     include it in a product, bundle, subscription or service that is sold or
+     charged for;
+
+  d) remove or alter copyright notices, or present the Software as your own
+     work.
+
+
+4. GitHub
+
+This repository is public on GitHub. The GitHub Terms of Service allow other
+GitHub users to view and fork public repositories. That permission comes from
+GitHub's terms; it does not give you any right under this license to modify
+the Software or to distribute modified versions of it.
+
+
+5. Third-party components
+
+The Software uses third-party components, such as .NET, Microsoft Edge
+WebView2, Next.js, React and Lucide icons. It also downloads yt-dlp and FFmpeg
+to the computer of the person using it; these are not part of the Software.
+Each of these components belongs to its own authors and is governed by its own
+license. This license does not change those licenses.
+
+
+6. Your responsibility
+
+The Software is a tool that downloads files from websites. You are solely
+responsible for what you download and for respecting copyright laws and the
+terms of use of the websites you access. Download only content that you have
+permission to download.
+
+
+7. Permission requests
+
+For any use that this license does not allow, such as modified versions or
+commercial use, ask the copyright holder for written permission by opening an
+issue in this repository.
+
+
+8. Termination
+
+These permissions end automatically if you break any of these terms. When that
+happens you must stop using the Software and delete your copies.
+
+
+9. No warranty and limitation of liability
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
