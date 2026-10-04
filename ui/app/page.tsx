@@ -713,6 +713,10 @@ export default function Page() {
   const ready = !!status?.ready
   const activeCount = history.filter((entry) => entry.status === 'downloading').length
 
+  // Each tab starts at the top of the scrolling content area.
+  const contentRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { contentRef.current?.scrollTo({ top: 0 }) }, [tab])
+
   return <main className="app-shell">
     <header className="app-header"><div className="brand"><Logo small /><div><strong>Jaca Downloader</strong></div></div><WindowControls /></header>
     <div className="app-body">
@@ -722,7 +726,7 @@ export default function Page() {
         <button className={`settings-tab ${tab === 'settings' ? 'active' : ''}`} aria-label="Configurações" title="Configurações" onClick={() => go('settings')}><SettingsIcon size={17} /></button>
       </nav>
       <div className="main-col">
-      <div className="content">
+      <div className="content" ref={contentRef}>
         {status && !status.ready && <div className={`tools-banner ${status.error ? 'failed' : ''}`}>{status.error ? <AlertCircle size={18} /> : <LoaderCircle className="spin" size={18} />}<span>{status.error ? `${status.message}: ${status.error}` : status.message}</span>{status.error && <button className="text-button" onClick={retryTools}>Tentar de novo</button>}</div>}
         {settings && <>
           <div hidden={tab !== 'download'}><DownloadPage settings={settings} ready={ready} history={history} request={request} onStarted={started} onOpenHistory={() => go('history')} toast={toast} /></div>
