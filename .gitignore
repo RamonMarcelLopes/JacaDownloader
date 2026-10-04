@@ -1,0 +1,19 @@
+# .NET build output
+bin/
+obj/
+dist/
+
+# Generated UI (rebuilt by build.bat) and local tooling files
+ui/out/
+ui/.next/
+ui/node_modules/
+ui/next-env.d.ts
+ui/*.tsbuildinfo
+
+# Logs
+*.log
+
+# IDE
+.vs/
+.idea/
+*.user

@@ -1,0 +1,104 @@
+/* Additions for the real app behavior; the designer's rules live in globals.css. */
+
+/* Borderless window: a strip along the very top (full width, above the header) drags the window; the controls stay clickable. */
+body::before { content: ''; position: fixed; top: 0; left: 0; right: 12px; height: 60px; z-index: 0; -webkit-app-region: drag; }
+.app-header { position: relative; z-index: 1; -webkit-app-region: drag; }
+.app-header button, .app-header .window-controls { -webkit-app-region: no-drag; }
+.window-controls button { cursor: pointer; }
+.window-controls button:hover { filter: brightness(1.15); }
+
+/* The designer's light theme keeps the dark-theme lime, which is too faint on white. */
+[data-theme="light"] { --lime: #2f9a2b; --green: #2a8a3b; }
+[data-theme="light"] .primary-button, [data-theme="light"] .download-button { color: #fff; }
+[data-theme="light"] .tab-count { color: #fff; }
+
+/* Scrollbars follow the app palette in both themes. */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border: 3px solid transparent; border-radius: 99px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--green); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:active { background: var(--lime); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+.spin { animation: jaca-spin 1s linear infinite; }
+@keyframes jaca-spin { to { transform: rotate(360deg); } }
+.flip { transform: rotate(180deg); }
+
+.history-thumb { border: 0; padding: 0; cursor: pointer; }
+.history-thumb:disabled { cursor: default; }
+.history-thumb.dark { background: linear-gradient(135deg, #2b3331, #151a19); }
+/* The color classes use the background shorthand, which resets the size; restore it for real thumbnails. */
+.history-thumb.red, .history-thumb.orange, .history-thumb.green, .history-thumb.dark { background-size: cover; background-position: center; background-repeat: no-repeat; }
+.history-main h3[title] { cursor: default; }
+
+.badge.info { color: #9fd3ff; border-color: #2f5878; background: #162a3a; }
+[data-theme="light"] .badge.info { color: #1d5d93; border-color: #a8cce8; background: #e4f1fb; }
+[data-theme="light"] .badge.success { color: #1f6b2b; border-color: #9fd3a6; background: #e3f6e6; }
+[data-theme="light"] .badge.danger { color: #b3261e; border-color: #efb3ae; background: #fdeceb; }
+[data-theme="light"] .badge.warning { color: #8a5a00; border-color: #e6cd8f; background: #fdf3da; }
+[data-theme="light"] .badge.youtube { color: #b3261e; border-color: #efb3ae; background: #fdeceb; }
+[data-theme="light"] .badge { color: #3f4f46; background: #eef3ef; border-color: #c8d6cb; }
+[data-theme="light"] .error-line, [data-theme="light"] .error-note { color: #b3261e; }
+
+/* Compact switches can hold three options (theme), so lay them out in as many columns as they have buttons. */
+.segmented.compact { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
+
+.progress-track.mini { height: 5px; margin-top: 10px; }
+.hint-gap { margin-top: 8px; }
+.advanced-panel { margin-top: 6px; }
+.advanced-row svg:last-child { transition: transform .15s ease; }
+
+.success-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+.error-note { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 11px 12px; border-radius: 10px; font-size: 12px; color: var(--danger); border: 1px solid #693b3a; background: #321c1b; }
+.error-note span { flex: 1; min-width: 0; word-break: break-word; }
+[data-theme="light"] .error-note { border-color: #efb3ae; background: #fdeceb; }
+
+.tools-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 14px; border-radius: 12px; font-size: 12px; color: #bad4c0; background: #14251b; border: 1px solid #294a32; }
+.tools-banner svg { color: var(--lime); flex: 0 0 auto; }
+.tools-banner span { flex: 1; min-width: 0; }
+.tools-banner.failed { color: var(--danger); background: #321c1b; border-color: #693b3a; }
+.tools-banner.failed svg { color: var(--danger); }
+[data-theme="light"] .tools-banner { color: #2d4a37; background: #e6f4e8; border-color: #b6d9bc; }
+[data-theme="light"] .tools-banner svg { color: #2a8a3b; }
+[data-theme="light"] .tools-banner.failed { color: #b3261e; background: #fdeceb; border-color: #efb3ae; }
+
+.menu-separator { height: 1px; margin: 3px 4px; background: var(--border); }
+.history-menu-popover button:disabled { opacity: .45; cursor: not-allowed; }
+.history-menu-popover button:disabled:hover { color: var(--muted); background: transparent; }
+.history-menu-popover .danger-item, .history-menu-popover .danger-item svg { color: var(--danger); }
+
+.toolbar { grid-template-columns: minmax(180px, 1fr) repeat(4, 132px); }
+.toolbar .menu-options { min-width: 100%; }
+.toolbar .menu-select > button { font-size: 12px; }
+
+.empty-action { margin-top: 16px; min-height: 40px; }
+.tool-versions { display: flex; flex-direction: column; gap: 10px; }
+.tool-versions > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.tool-versions span { color: var(--muted); }
+.tool-versions strong { font-weight: 600; word-break: break-all; text-align: right; }
+
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: #000a; backdrop-filter: blur(3px); }
+.modal { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.modal-text { color: var(--muted); line-height: 1.55; font-size: 13px; }
+.modal-loading { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.modal-actions .primary-button { min-height: 40px; }
+.danger-button { background: var(--danger); color: #2b0d0b; }
+
+.toast { position: fixed; z-index: 60; left: 50%; bottom: 26px; transform: translateX(-50%); padding: 11px 18px; border-radius: 11px; border: 1px solid var(--border-light); background: var(--card); color: var(--foreground); font-size: 13px; box-shadow: 0 16px 36px #0008; animation: jaca-toast .2s ease; }
+@keyframes jaca-toast { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+@media (max-width: 760px) {
+  .toolbar { grid-template-columns: 1fr 1fr; }
+  .toolbar .search-input { grid-column: 1 / -1; }
+}
+
+@media (max-width: 620px) {
+  .app-body { gap: 12px; }
+  .tabs { flex: 0 0 48px; min-height: 0; padding-right: 8px; }
+  .tabs button { flex: 0 0 auto; }
+  .input-row { flex-direction: column; }
+  .toolbar { display: grid; flex-direction: initial; }
+  .success-actions .ghost-button { flex: 1 1 100%; }
+}
