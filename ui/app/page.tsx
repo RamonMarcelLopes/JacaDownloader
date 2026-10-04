@@ -105,7 +105,7 @@ function MenuSelect({ label, value, options, onChange, disabled }: { label: stri
 function WindowControls() {
   return <div className="window-controls" aria-label="Controles da janela">
     <button className="window-minimize" aria-label="Minimizar" title="Minimizar" onClick={() => hostMessage('minimize')} />
-    <button className="window-maximize" aria-label="Tela cheia" title="Tela cheia" onClick={() => hostMessage('maximize')} />
+    <button className="window-maximize" aria-label="Tela cheia (indisponível)" title="Tela cheia indisponível" disabled />
     <button className="window-close" aria-label="Fechar" title="Fechar" onClick={() => hostMessage('close')} />
   </div>
 }

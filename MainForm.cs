@@ -17,6 +17,9 @@ public class MainForm : Form
     const int DWMWA_NCRENDERING_POLICY = 2;
     const int DWMNCRP_DISABLED = 1;
     const int WM_MOVING = 0x216;
+    const int WM_SIZE = 0x5;
+    const int WM_SYSCOMMAND = 0x112;
+    const int SC_MAXIMIZE = 0xF030;
     const int WS_MINIMIZEBOX = 0x20000;
     const int WS_MAXIMIZEBOX = 0x10000;
     const int WS_THICKFRAME = 0x40000;
@@ -31,12 +34,9 @@ public class MainForm : Form
 
     readonly WebView2 web = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(9, 12, 13) };
     readonly string url;
-    readonly bool startMaximized;
     FormWindowState lastState = FormWindowState.Normal;
-    Rectangle normalBounds;
-    DateTime restoreGuardUntil;
 
-    record SavedWindow(int X, int Y, int Width, int Height, bool Maximized);
+    record SavedWindow(int X, int Y, int Width, int Height);
 
     [StructLayout(LayoutKind.Sequential)]
     struct Rect { public int Left, Top, Right, Bottom; }
@@ -49,6 +49,7 @@ public class MainForm : Form
         Padding = new Padding(4, 0, 4, 4);
         BackColor = DarkFrame;
         MinimumSize = new Size(480, 600);
+        MaximumSize = StartSize;
         using (var icon = typeof(MainForm).Assembly.GetManifestResourceStream("app.ico")!)
             Icon = new Icon(icon);
         Controls.Add(web);
@@ -56,8 +57,6 @@ public class MainForm : Form
         var saved = LoadState();
         StartPosition = FormStartPosition.Manual;
         Bounds = InitialBounds(saved);
-        normalBounds = Bounds;
-        startMaximized = saved?.Maximized ?? false;
 
         Program.PickFolder = PickFolder;
         Load += async (_, _) => await InitAsync();
@@ -89,38 +88,17 @@ public class MainForm : Form
         DwmSetWindowAttribute(Handle, DWMWA_NCRENDERING_POLICY, ref policy, sizeof(int));
     }
 
-    protected override void OnShown(EventArgs e)
-    {
-        base.OnShown(e);
-        if (startMaximized) WindowState = FormWindowState.Maximized;
-    }
-
-    // Keeps the maximized window inside the work area (above the taskbar) and
-    // makes the web view paint again after the window is restored from the taskbar.
+    // Makes the web view paint again after the window is restored from the taskbar, and
+    // undoes any maximize that slips past the blocked system command (for example a snap to the top edge).
     protected override void OnResize(EventArgs e)
     {
-        MaximizedBounds = Screen.FromControl(this).WorkingArea;
         base.OnResize(e);
 
         var unminimized = lastState == FormWindowState.Minimized && WindowState != FormWindowState.Minimized;
-        var unmaximized = lastState == FormWindowState.Maximized && WindowState == FormWindowState.Normal;
         lastState = WindowState;
 
-        // The thick-frame style makes Windows grow the restored window by a few pixels right after
-        // un-maximizing, so the pre-maximize size is enforced for a moment instead of being recorded.
-        if (unmaximized) restoreGuardUntil = DateTime.UtcNow.AddMilliseconds(800);
-        if (WindowState == FormWindowState.Normal)
-        {
-            if (DateTime.UtcNow < restoreGuardUntil)
-            {
-                if (Bounds != normalBounds)
-                    BeginInvoke(() => { if (WindowState == FormWindowState.Normal) Bounds = normalBounds; });
-            }
-            else
-            {
-                normalBounds = Bounds;
-            }
-        }
+        if (WindowState == FormWindowState.Maximized)
+            BeginInvoke(() => WindowState = FormWindowState.Normal);
 
         if (unminimized)
         {
@@ -130,13 +108,6 @@ public class MainForm : Form
                 web.Visible = true;
             });
         }
-    }
-
-    protected override void OnLocationChanged(EventArgs e)
-    {
-        base.OnLocationChanged(e);
-        if (WindowState == FormWindowState.Normal && lastState == FormWindowState.Normal && DateTime.UtcNow >= restoreGuardUntil)
-            normalBounds = Bounds;
     }
 
     protected override void WndProc(ref Message m)
@@ -155,6 +126,18 @@ public class MainForm : Form
             case WM_NCACTIVATE:
                 m.LParam = (IntPtr)(-1);
                 break;
+
+            // The window never goes full screen: Win+Up, a double-click on the top strip and similar are ignored.
+            case WM_SYSCOMMAND when ((int)m.WParam & 0xFFF0) == SC_MAXIMIZE:
+                m.Result = IntPtr.Zero;
+                return;
+
+            // Anything that still maximizes the window (a snap to the top edge, code) is undone right away.
+            case WM_SIZE:
+                base.WndProc(ref m);
+                if (WindowState == FormWindowState.Maximized)
+                    BeginInvoke(() => WindowState = FormWindowState.Normal);
+                return;
 
             // Lets the user resize the borderless window from its edges.
             case WM_NCHITTEST when WindowState == FormWindowState.Normal:
@@ -218,7 +201,7 @@ public class MainForm : Form
     {
         if (saved != null)
         {
-            var rect = new Rectangle(saved.X, saved.Y, saved.Width, saved.Height);
+            var rect = new Rectangle(saved.X, saved.Y, Math.Min(saved.Width, StartSize.Width), Math.Min(saved.Height, StartSize.Height));
             Screen? best = null;
             long bestArea = 0;
             foreach (var screen in Screen.AllScreens)
@@ -263,7 +246,7 @@ public class MainForm : Form
         try
         {
             var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
-            var state = new SavedWindow(bounds.X, bounds.Y, bounds.Width, bounds.Height, WindowState == FormWindowState.Maximized);
+            var state = new SavedWindow(bounds.X, bounds.Y, bounds.Width, bounds.Height);
             Directory.CreateDirectory(Tools.AppDataDir);
             File.WriteAllText(StatePath, JsonSerializer.Serialize(state, Json));
         }
@@ -301,7 +284,6 @@ public class MainForm : Form
         switch (message)
         {
             case "minimize": WindowState = FormWindowState.Minimized; break;
-            case "maximize": WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized; break;
             case "close": Close(); break;
             case "theme:light": BackColor = LightFrame; break;
             case "theme:dark": BackColor = DarkFrame; break;

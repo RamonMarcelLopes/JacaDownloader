@@ -1,11 +1,17 @@
 /* Additions for the real app behavior; the designer's rules live in globals.css. */
 
+/* Use the whole window width: the logo and sidebar hug the left edge instead of floating in a centered column. */
+.app-shell { max-width: none; padding: 20px 20px 20px 6px; }
+
 /* Borderless window: a strip along the very top (full width, above the header) drags the window; the controls stay clickable. */
 body::before { content: ''; position: fixed; top: 0; left: 0; right: 12px; height: 60px; z-index: 0; -webkit-app-region: drag; }
 .app-header { position: relative; z-index: 1; -webkit-app-region: drag; }
 .app-header button, .app-header .window-controls { -webkit-app-region: no-drag; }
 .window-controls button { cursor: pointer; }
 .window-controls button:hover { filter: brightness(1.15); }
+/* Full screen is blocked, so its button stays visible but dimmed and inert. */
+.window-controls button:disabled { opacity: .3; filter: grayscale(.5); cursor: not-allowed; }
+.window-controls button:disabled:hover { filter: grayscale(.5); }
 
 /* The designer's light theme keeps the dark-theme lime, which is too faint on white. */
 [data-theme="light"] { --lime: #2f9a2b; --green: #2a8a3b; }
