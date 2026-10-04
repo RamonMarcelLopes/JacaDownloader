@@ -128,6 +128,7 @@ public static class Downloader
             var args = new List<string>
             {
                 "--no-playlist", "--newline", "--no-colors", "--no-quiet", "--progress", "--windows-filenames",
+                "--encoding", "utf-8",
                 "--ffmpeg-location", Tools.Dir,
                 "-o", Path.Combine(job.OutputDir, fileName),
                 "--print", "before_dl:%(.{title,uploader,duration,thumbnail,height})j",
@@ -148,6 +149,7 @@ public static class Downloader
             AddCookies(args, job.Cookies);
             args.Add(url);
 
+            var startedAt = DateTime.UtcNow.AddSeconds(-5);
             var expectedStreams = job.Type == "video" ? 2 : 1;
             var streamIndex = 0;
             var progress = new Regex(@"\[download\]\s+(\d+(?:\.\d+)?)%");
@@ -188,6 +190,8 @@ public static class Downloader
             }
 
             await p.WaitForExitAsync();
+            if (p.ExitCode == 0 && job.FilePath == null)
+                job.FilePath = FindNewestFile(job.OutputDir, job.Type == "audio" ? ".mp3" : ".mp4", startedAt);
             if (p.ExitCode != 0 || job.FilePath == null)
                 throw new Exception(lastError != null ? LastError(lastError) : "O download falhou.");
 
@@ -213,6 +217,13 @@ public static class Downloader
         }
         Store.Save();
     }
+
+    // Fallback for when the printed path cannot be matched to a file: take the newest file the job just wrote.
+    static string? FindNewestFile(string dir, string extension, DateTime since) =>
+        new DirectoryInfo(dir).EnumerateFiles("*" + extension)
+            .Where(f => f.LastWriteTimeUtc >= since)
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .FirstOrDefault()?.FullName;
 
     static void ApplyMetadata(Entry job, string json)
     {
