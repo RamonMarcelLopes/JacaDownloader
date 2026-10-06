@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>JacaDownloader</AssemblyName>
     <RootNamespace>JacaDownloader</RootNamespace>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
@@ -26,6 +26,7 @@
     <!-- The exported Next.js interface (run build.bat first to generate ui\out). -->
     <EmbeddedResource Include="ui\out\**\*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
     <PackageReference Include="Velopack" Version="1.2.161" />
+    <PackageReference Include="Magick.NET-Q16-x64" Version="*" />
   </ItemGroup>
 
 </Project>
