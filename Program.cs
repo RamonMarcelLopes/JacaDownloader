@@ -15,13 +15,7 @@ internal static class Program
     static void Main()
     {
         // Handles the installer/updater hooks and must run before anything else.
-        Velopack.VelopackApp.Build()
-            .OnBeforeUninstallFastCallback(_ =>
-            {
-                // Uninstalling also removes the history, settings and downloaded tools.
-                try { Directory.Delete(Tools.AppDataDir, true); } catch { }
-            })
-            .Run();
+        Velopack.VelopackApp.Build().Run();
 
         // The web view profile always lives in the app data folder, never next to the exe.
         Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(Tools.AppDataDir, "webview"));
