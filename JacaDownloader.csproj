@@ -25,6 +25,7 @@
     <EmbeddedResource Include="ui\public\logo.png" LogicalName="logo.png" />
     <!-- The exported Next.js interface (run build.bat first to generate ui\out). -->
     <EmbeddedResource Include="ui\out\**\*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 
 </Project>

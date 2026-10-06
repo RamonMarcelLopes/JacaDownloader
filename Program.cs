@@ -14,6 +14,9 @@ internal static class Program
     [STAThread]
     static void Main()
     {
+        // Handles the installer/updater hooks and must run before anything else.
+        Velopack.VelopackApp.Build().Run();
+
         // The web view profile always lives in the app data folder, never next to the exe.
         Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(Tools.AppDataDir, "webview"));
 
@@ -23,6 +26,7 @@ internal static class Program
         var web = BuildWebApp();
         web.Start();
         _ = Tools.EnsureAsync();
+        _ = Updater.RunAsync();
 
         Application.Run(new MainForm(web.Urls.First()));
         web.StopAsync().GetAwaiter().GetResult();
@@ -65,6 +69,20 @@ internal static class Program
             message = Tools.Message,
             error = Tools.Error,
             version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
+        });
+
+        app.MapGet("/api/update", () => new { version = Updater.AvailableVersion, installing = Updater.Installing });
+
+        app.MapPost("/api/update/install", async () =>
+        {
+            if (Store.ActiveCount() > 0)
+                return Results.BadRequest(new { error = "Espere os downloads terminarem para atualizar." });
+            try
+            {
+                await Updater.InstallAsync();
+                return Results.Ok();
+            }
+            catch (Exception ex) { return Results.BadRequest(new { error = "Não foi possível atualizar: " + ex.Message }); }
         });
 
         app.MapGet("/api/settings", () => Store.Current);

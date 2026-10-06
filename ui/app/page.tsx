@@ -611,6 +611,7 @@ export default function Page() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [status, setStatus] = useState<ToolStatus | null>(null)
   const [statusNonce, setStatusNonce] = useState(0)
+  const [update, setUpdate] = useState<{ version: string | null; installing: boolean } | null>(null)
   const [history, setHistory] = useState<Entry[]>([])
   const [request, setRequest] = useState<{ url: string; nonce: number }>()
   const [modal, setModal] = useState<ModalState | null>(null)
@@ -645,6 +646,23 @@ export default function Page() {
     poll()
     return () => { stopped = true; window.clearTimeout(timer) }
   }, [statusNonce])
+
+  // The app looks for a new version in the background, so the answer is polled until one shows up.
+  useEffect(() => {
+    if (update?.version) return
+    const check = () => api<{ version: string | null; installing: boolean }>('/api/update').then(setUpdate).catch(() => {})
+    const first = window.setTimeout(check, 4000)
+    const timer = window.setInterval(check, 60000)
+    return () => { window.clearTimeout(first); window.clearInterval(timer) }
+  }, [update?.version])
+
+  async function installUpdate() {
+    setUpdate((current) => current && { ...current, installing: true })
+    try { await api('/api/update/install', {}) } catch (error) {
+      setUpdate((current) => current && { ...current, installing: false })
+      toast(errorText(error))
+    }
+  }
 
   useEffect(() => { refresh() }, [refresh, tab])
   useEffect(() => {
@@ -728,6 +746,7 @@ export default function Page() {
       <div className="main-col">
       <div className="content" ref={contentRef}>
         {status && !status.ready && <div className={`tools-banner ${status.error ? 'failed' : ''}`}>{status.error ? <AlertCircle size={18} /> : <LoaderCircle className="spin" size={18} />}<span>{status.error ? `${status.message}: ${status.error}` : status.message}</span>{status.error && <button className="text-button" onClick={retryTools}>Tentar de novo</button>}</div>}
+        {update?.version && <div className="tools-banner"><Sparkles size={18} /><span>{update.installing ? 'Atualizando o Jaca Downloader...' : `Nova versão disponível: ${update.version}`}</span>{update.installing ? <LoaderCircle className="spin" size={18} /> : <button className="text-button" onClick={installUpdate}>Atualizar agora</button>}</div>}
         {settings && <>
           <div hidden={tab !== 'download'}><DownloadPage settings={settings} ready={ready} history={history} request={request} onStarted={started} onOpenHistory={() => go('history')} toast={toast} /></div>
           <div hidden={tab !== 'history'}><HistoryPage items={history} onUseLink={useHistoryLink} onOtherFormat={(entry) => setModal({ kind: 'format', entry })} onGoDownload={() => go('download')} refresh={refresh} toast={toast} confirm={confirm} /></div>
