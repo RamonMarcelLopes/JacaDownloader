@@ -13,7 +13,7 @@ public static class Store
     public static readonly string ThumbsDir = Path.Combine(Tools.AppDataDir, "thumbs");
 
     static readonly string[] Themes = { "system", "light", "dark" };
-    static readonly string[] Tabs = { "download", "history", "settings" };
+    static readonly string[] Tabs = { "download", "history", "converter", "settings" };
     static readonly string[] Browsers = { "", "chrome", "edge", "firefox", "brave" };
     static readonly int[] RetentionDays = { 0, 30, 90, -1 };
 
@@ -46,6 +46,7 @@ public static class Store
             var next = new Settings
             {
                 DefaultDir = dir,
+                ImageDir = string.IsNullOrWhiteSpace(s.ImageDir) ? dir : Path.GetFullPath(s.ImageDir),
                 DefaultType = s.DefaultType == "audio" ? "audio" : "video",
                 DefaultQuality = Math.Clamp(s.DefaultQuality, 0, 8640),
                 Cookies = Browsers.Contains(s.Cookies ?? "") ? s.Cookies ?? "" : "",

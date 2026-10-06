@@ -27,6 +27,7 @@ public class Entry
 public class Settings
 {
     public string DefaultDir { get; set; } = Downloader.DefaultDir;
+    public string ImageDir { get; set; } = Downloader.DefaultDir;
     public string DefaultType { get; set; } = "video";
     public int DefaultQuality { get; set; }
     public string Cookies { get; set; } = "";

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
+  ArrowLeftRight,
   Check,
   ChevronDown,
   Copy,
@@ -10,6 +11,8 @@ import {
   ExternalLink,
   FolderOpen,
   History,
+  ImageIcon,
+  Info as InfoIcon,
   Link2,
   LoaderCircle,
   MoreHorizontal,
@@ -21,11 +24,13 @@ import {
   SlidersHorizontal,
   Sparkles,
   Trash2,
+  Upload,
   Video,
   X,
 } from 'lucide-react'
 import {
   api,
+  convertImage,
   copyText,
   fileNameOf,
   formatDate,
@@ -35,6 +40,7 @@ import {
   hostMessage,
   platformLabel,
   platformLabels,
+  type ConvertFormats,
   type Entry,
   type Info,
   type Settings,
@@ -274,7 +280,7 @@ function DownloadPage({ settings, ready, history, request, onStarted, onOpenHist
           <button className={type === 'audio' ? 'selected' : ''} onClick={() => { setType('audio'); touch() }}><Music2 size={17} /> Áudio <span>MP3</span></button>
         </div>
         {type === 'video' && <div className="field"><label>Qualidade do vídeo</label><div className="select-wrap"><MenuSelect label="Qualidade do vídeo" value={quality} options={qualityOptions} onChange={(value) => { setQuality(value); touch() }} /></div><p className="field-hint">Mostramos só as qualidades que existem para este vídeo.</p></div>}
-        <div className="field"><label htmlFor="folder">Salvar em</label><div className="input-wrap"><FolderOpen size={17} /><input id="folder" value={folder} onChange={(event) => { setDir(event.target.value); touch() }} /><button className="inline-action" onClick={chooseFolder}>Escolher</button></div></div>
+        <div className="field"><label htmlFor="folder">Salvar em</label><div className="input-wrap"><FolderOpen size={24} /><input id="folder" value={folder} readOnly tabIndex={-1} /><button className="inline-action" onClick={chooseFolder}>Escolher</button></div></div>
         <button className="advanced-row" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen(!advancedOpen)}><SlidersHorizontal size={16} /> Opções avançadas <ChevronDown size={16} className={advancedOpen ? 'flip' : ''} /></button>
         {advancedOpen && <div className="field advanced-panel"><label>Usar login do navegador</label><div className="select-wrap"><MenuSelect label="Usar login do navegador" value={browser} options={browserOptions} onChange={(value) => { setCookies(value); touch() }} /></div><p className="field-hint">Ajuda em posts que pedem login, como Instagram e X. Escolha o navegador em que você está logado.</p></div>}
         {info.spotify && <div className="info-note"><Music2 size={17} /><span>O Spotify é protegido, então o app busca a mesma música no YouTube e baixa em MP3.</span></div>}
@@ -504,11 +510,214 @@ function FormatModal({ entry, settings, onClose, onStarted, toast }: {
         <button className={type === 'audio' ? 'selected' : ''} onClick={() => setType('audio')}><Music2 size={17} /> Áudio <span>MP3{entry.type === 'audio' ? ' · já baixado' : ''}</span></button>
       </div>
       {type === 'video' && <div className="field"><label>Qualidade do vídeo</label><div className="select-wrap"><MenuSelect label="Qualidade do vídeo" value={quality} options={qualityOptions} onChange={setQuality} /></div></div>}
-      <div className="field"><label htmlFor="modal-folder">Salvar em</label><div className="input-wrap"><FolderOpen size={17} /><input id="modal-folder" value={dir} onChange={(event) => setDir(event.target.value)} /><button className="inline-action" onClick={choose}>Escolher</button></div></div>
+      <div className="field"><label htmlFor="modal-folder">Salvar em</label><div className="input-wrap"><FolderOpen size={24} /><input id="modal-folder" value={dir} readOnly tabIndex={-1} /><button className="inline-action" onClick={choose}>Escolher</button></div></div>
       {error && <p className="error-line"><AlertCircle size={14} /> {error}</p>}
     </>}
     <div className="modal-actions"><button className="ghost-button" onClick={onClose}>Cancelar</button><button className="primary-button" onClick={start} disabled={!info}><Download size={16} /> Baixar</button></div>
   </Modal>
+}
+
+type ConverterStatus = 'Aguardando' | 'Convertendo' | 'Pronta' | 'Salva' | 'Falhou'
+type ConverterFile = { id: string; file: File; url: string; status: ConverterStatus; resultId?: string; error?: string }
+
+const converterGroups: Record<string, string[]> = {
+  'Mais usados': ['JPG', 'PNG', 'WEBP', 'GIF', 'BMP', 'TIFF', 'ICO', 'AVIF'],
+  'Design e edição': ['PSD', 'PSB', 'TGA', 'EPS', 'PS', 'ICNS'],
+  'Outros nomes': ['JPEG', 'JFIF', 'TIF', 'PPM'],
+}
+
+const acceptedGroups: Record<string, string[]> = {
+  'Fotos e imagens': ['JPG', 'JPEG', 'JFIF', 'PNG', 'WEBP', 'GIF', 'BMP', 'TIF', 'TIFF', 'ICO', 'ICNS', 'AVIF', 'HEIC', 'HEIF', 'PPM', 'TGA'],
+  'Fotos de câmera (RAW)': ['ARW', 'CR2', 'CR3', 'CRW', 'DCR', 'DNG', 'ERF', 'MOS', 'MRW', 'NEF', 'ORF', 'PEF', 'RAF', 'RW2', 'X3F'],
+  'Design e edição': ['PSD', 'PSB', 'XCF'],
+}
+
+// Names that are the same image type: a batch may mix them and the destination cannot be one of them.
+const sameType = (ext: string) => ext.toLowerCase().replace('jpeg', 'jpg').replace('jfif', 'jpg').replace('tiff', 'tif')
+const extensionOf = (name: string) => name.split('.').pop()?.toLowerCase() ?? ''
+
+function ConverterThumb({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false)
+  return failed ? <div className="converter-thumb-fallback"><ImageIcon size={18} /></div> : <img src={url} alt="" onError={() => setFailed(true)} />
+}
+
+function ConverterPage({ settings, toast, warn }: { settings: Settings; toast: (message: string) => void; warn: (message: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [formats, setFormats] = useState<ConvertFormats | null>(null)
+  const [files, setFiles] = useState<ConverterFile[]>([])
+  const [chosen, setChosen] = useState('JPG')
+  const [folder, setFolder] = useState<string | null>(null)
+  const [searchFormat, setSearchFormat] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const [converting, setConverting] = useState(false)
+
+  useEffect(() => { api<ConvertFormats>('/api/convert/formats').then(setFormats).catch(() => {}) }, [])
+
+  // A file dropped outside the page area must not make the window open it.
+  useEffect(() => {
+    const block = (event: DragEvent) => event.preventDefault()
+    window.addEventListener('dragover', block)
+    window.addEventListener('drop', block)
+    return () => { window.removeEventListener('dragover', block); window.removeEventListener('drop', block) }
+  }, [])
+
+  const saveDir = folder ?? settings.imageDir
+  const source = files[0] ? extensionOf(files[0].file.name).toUpperCase() : ''
+  const destinations = new Set(formats?.destinations ?? [])
+  const available = (format: string) => destinations.has(format.toLowerCase()) && sameType(format) !== sameType(source)
+  // The destination falls back to PNG/JPG when the chosen one is the same type as the images.
+  const target = available(chosen) ? chosen : available('PNG') ? 'PNG' : 'JPG'
+  const unsaved = files.filter((item) => item.status === 'Pronta')
+  const pending = files.filter((item) => item.status === 'Aguardando' || item.status === 'Falhou')
+  const acceptList = (formats?.sources ?? []).map((ext) => '.' + ext).join(',')
+
+  // Drops the converted copies kept by the app (the images the user picked are never touched).
+  const discardResults = (items: ConverterFile[]) => {
+    items.forEach((item) => { if (item.resultId) api('/api/convert/discard', { id: item.resultId }).catch(() => {}) })
+  }
+
+  function addFiles(incoming: FileList | File[]) {
+    const list = Array.from(incoming)
+    const supported = list.filter((file) => formats?.sources.includes(extensionOf(file.name)))
+    const base = files[0] ? extensionOf(files[0].file.name) : supported[0] ? extensionOf(supported[0].name) : ''
+    const matching = supported.filter((file) => sameType(extensionOf(file.name)) === sameType(base))
+    if (supported.length < list.length) warn('Alguns arquivos não foram adicionados: formato não suportado.')
+    else if (matching.length < supported.length) warn(`Os arquivos precisam ser do mesmo tipo. A lista atual é de ${base.toUpperCase()}.`)
+    if (!matching.length) return
+    setFiles((current) => [...current, ...matching.map((file) => ({ id: crypto.randomUUID(), file, url: URL.createObjectURL(file), status: 'Aguardando' as const }))])
+  }
+
+  function chooseTarget(format: string) {
+    if (format === target || converting) return
+    // Results made for another format are discarded and the images wait to be converted again.
+    discardResults(files)
+    setFiles((current) => current.map((item) => ({ ...item, status: 'Aguardando', resultId: undefined, error: undefined })))
+    setChosen(format)
+  }
+
+  function removeFile(item: ConverterFile) {
+    URL.revokeObjectURL(item.url)
+    discardResults([item])
+    setFiles((current) => current.filter((file) => file.id !== item.id))
+  }
+
+  function clearAll() {
+    files.forEach((item) => URL.revokeObjectURL(item.url))
+    discardResults(files)
+    setFiles([])
+  }
+
+  const patch = (id: string, change: Partial<ConverterFile>) => setFiles((current) => current.map((file) => file.id === id ? { ...file, ...change } : file))
+
+  async function convert() {
+    if (!pending.length || converting) return
+    setConverting(true)
+    for (const item of pending) {
+      patch(item.id, { status: 'Convertendo', error: undefined })
+      try {
+        const result = await convertImage(item.file, target)
+        patch(item.id, { status: 'Pronta', resultId: result.id })
+      } catch (error) {
+        patch(item.id, { status: 'Falhou', error: errorText(error) })
+      }
+    }
+    setConverting(false)
+  }
+
+  async function save(item: ConverterFile, quiet = false) {
+    if (!item.resultId) return false
+    try {
+      await api('/api/convert/save', { id: item.resultId, name: item.file.name, dir: saveDir })
+      patch(item.id, { status: 'Salva' })
+      if (!quiet) toast('Imagem salva')
+      return true
+    } catch (error) {
+      toast(errorText(error))
+      return false
+    }
+  }
+
+  async function saveAll() {
+    let saved = 0
+    for (const item of unsaved) if (await save(item, true)) saved++
+    if (saved) toast(saved === 1 ? 'Imagem salva' : `${saved} imagens salvas`)
+  }
+
+  async function chooseFolder() {
+    try {
+      const result = await api<{ path: string | null }>('/api/pick-folder', { initial: saveDir })
+      if (result.path) setFolder(result.path)
+    } catch (error) { toast(errorText(error)) }
+  }
+
+  const totalSize = formatSize(files.reduce((sum, item) => sum + item.file.size, 0))
+  const search = searchFormat.trim().toLowerCase()
+
+  // Files can be dropped anywhere on the page, also after the first ones were added.
+  const dropHandlers = {
+    onDragOver: (event: React.DragEvent) => { event.preventDefault(); if (!converting) setDragging(true) },
+    onDragLeave: (event: React.DragEvent) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false) },
+    onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); if (!converting) addFiles(event.dataTransfer.files) },
+  }
+
+  return <div className={`page-stack converter-page ${dragging && files.length ? 'drop-active' : ''}`} {...dropHandlers}>
+    <section className="hero-copy">
+      <div>
+        <p className="eyebrow"><ArrowLeftRight size={14} /> converter</p>
+        <h1>Converter imagens</h1>
+        <p className="hero-subtitle">Escolha as imagens e o formato de destino.</p>
+      </div>
+      <div className="hero-orb"><ArrowLeftRight size={32} strokeWidth={1.8} /></div>
+    </section>
+    <input ref={inputRef} type="file" accept={acceptList} multiple hidden onChange={(event) => { if (event.target.files) addFiles(event.target.files); event.target.value = '' }} />
+    <div className={`converter-dropzone ${files.length ? 'compact' : ''} ${dragging ? 'dragging' : ''}`} role="button" tabIndex={0} aria-disabled={converting}
+      onClick={() => { if (!converting) inputRef.current?.click() }}
+      onKeyDown={(event) => { if (!converting && (event.key === 'Enter' || event.key === ' ')) inputRef.current?.click() }}>
+      <div className="converter-drop-icon"><Upload size={files.length ? 16 : 25} /></div>
+      <strong>{dragging ? 'Solte para adicionar' : 'Arraste imagens aqui'}</strong>
+      <span>ou</span>
+      <button type="button" className="primary-button" disabled={converting} onClick={(event) => { event.stopPropagation(); inputRef.current?.click() }}>Escolher imagens</button>
+    </div>
+    {!files.length ? <>
+      <section className="empty-tip"><div className="tip-icon"><InfoIcon size={21} /></div><div><strong>Você pode converter uma imagem ou várias de uma vez, desde que sejam do mesmo tipo.</strong><p>As imagens são convertidas no seu computador e não são enviadas para lugar nenhum.</p></div></section>
+      {formats && <section className="card accepted-formats">
+        <h2>Formatos aceitos</h2>
+        {Object.entries(acceptedGroups).map(([group, groupFormats]) => <div key={group}><span className="format-group-title">{group}</span><div className="accepted-chips">{groupFormats.filter((format) => formats.sources.includes(format.toLowerCase())).map((format) => <Badge key={format}>{format}</Badge>)}</div></div>)}
+      </section>}
+    </> : <>
+      <div className="converter-summary card">
+        <div><Badge tone="success">{source}</Badge><strong>{files.length} {files.length === 1 ? 'imagem' : 'imagens'}</strong><span> · {totalSize}</span></div>
+        <div className="summary-actions">
+          <button className="ghost-button" disabled={converting} onClick={clearAll}><Trash2 size={15} /> Limpar tudo</button>
+        </div>
+      </div>
+      <div className="converter-file-list">
+        {files.map((item) => <div className="converter-file-row" key={item.id}>
+          <ConverterThumb url={item.url} />
+          <div className="converter-file-info"><strong>{item.file.name}</strong><span className={item.error ? 'converter-error' : undefined}>{item.error ?? formatSize(item.file.size)}</span></div>
+          <Badge tone={item.status === 'Pronta' || item.status === 'Salva' ? 'success' : item.status === 'Falhou' ? 'danger' : 'neutral'}>{item.status}</Badge>
+          {item.status === 'Convertendo' && <LoaderCircle className="spin" size={16} />}
+          {(item.status === 'Pronta' || item.status === 'Salva') && <button className="icon-button converter-download-action" aria-label={`Baixar ${item.file.name}`} title="Baixar imagem" onClick={() => save(item)}><Download size={16} /></button>}
+          <button className="icon-button" disabled={converting} aria-label={`Remover ${item.file.name}`} onClick={() => removeFile(item)}><X size={16} /></button>
+        </div>)}
+      </div>
+      <section className="card converter-destination">
+        <div className="section-heading"><div><h2>Converter para</h2><p>Escolha o formato de destino para toda a lista.</p></div><ArrowLeftRight className="heading-icon" size={20} /></div>
+        <div className="format-search input-wrap"><Search size={16} /><input value={searchFormat} onChange={(event) => setSearchFormat(event.target.value)} placeholder="Buscar formato..." /></div>
+        <div className="format-groups">
+          {Object.entries(converterGroups).map(([group, groupFormats]) => {
+            const visible = groupFormats.filter((format) => available(format) && format.toLowerCase().includes(search))
+            return visible.length > 0 && <div key={group}><span className="format-group-title">{group}</span><div className="format-chips">{visible.map((format) => <button key={format} className={target === format ? 'selected' : ''} disabled={converting} onClick={() => chooseTarget(format)}>{format}</button>)}</div></div>
+          })}
+        </div>
+        <div className="field"><label htmlFor="converter-folder">Salvar em</label><div className="input-wrap"><ImageIcon size={24} /><input id="converter-folder" value={saveDir} readOnly tabIndex={-1} /><button className="inline-action" onClick={chooseFolder}>Escolher</button></div></div>
+        <div className="converter-actions">
+          <button className="download-button" disabled={!pending.length || converting} onClick={convert}><ArrowLeftRight size={18} /> {converting ? 'Convertendo...' : pending.length ? `Converter ${pending.length} ${pending.length === 1 ? 'imagem' : 'imagens'} para ${target}` : 'Tudo convertido'}</button>
+          {unsaved.length > 0 && <button className="download-all-button" disabled={converting} onClick={saveAll}><Download size={17} /> Baixar todas as imagens</button>}
+        </div>
+      </section>
+    </>}
+  </div>
 }
 
 function SettingsPage({ settings, updateSettings, status, items, toast, confirm, refresh }: {
@@ -520,12 +729,10 @@ function SettingsPage({ settings, updateSettings, status, items, toast, confirm,
   confirm: (options: ConfirmOptions) => void
   refresh: () => Promise<void>
 }) {
-  const [dirText, setDirText] = useState(settings.defaultDir)
   const [versions, setVersions] = useState<{ ytdlp: string; ffmpeg: string } | null>(null)
   const [updating, setUpdating] = useState(false)
   const [updateNote, setUpdateNote] = useState('')
 
-  useEffect(() => setDirText(settings.defaultDir), [settings.defaultDir])
   useEffect(() => {
     if (status?.ready) api<{ ytdlp: string; ffmpeg: string }>('/api/tools').then(setVersions).catch(() => {})
   }, [status?.ready])
@@ -534,6 +741,13 @@ function SettingsPage({ settings, updateSettings, status, items, toast, confirm,
     try {
       const result = await api<{ path: string | null }>('/api/pick-folder', { initial: settings.defaultDir })
       if (result.path) await updateSettings({ defaultDir: result.path })
+    } catch (error) { toast(errorText(error)) }
+  }
+
+  async function chooseImageFolder() {
+    try {
+      const result = await api<{ path: string | null }>('/api/pick-folder', { initial: settings.imageDir })
+      if (result.path) await updateSettings({ imageDir: result.path })
     } catch (error) { toast(errorText(error)) }
   }
 
@@ -580,7 +794,8 @@ function SettingsPage({ settings, updateSettings, status, items, toast, confirm,
 
   return <div className="page-stack settings-page"><div className="page-title-row"><div><p className="eyebrow">do seu jeito</p><h1>Configurações</h1><p className="hero-subtitle">Ajuste o Jaca para funcionar como você gosta.</p></div></div><div className="settings-grid"><div className="settings-column">
     <SettingsSection title="Downloads" icon={<Download size={17} />}>
-      <SettingField label="Pasta padrão"><div className="input-wrap"><FolderOpen size={16} /><input value={dirText} onChange={(event) => setDirText(event.target.value)} onBlur={() => { if (dirText.trim() && dirText !== settings.defaultDir) updateSettings({ defaultDir: dirText }) }} onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur() }} /><button className="inline-action" onClick={chooseFolder}>Escolher</button></div></SettingField>
+      <SettingField label="Pasta de vídeos e músicas"><div className="input-wrap"><Video size={24} /><input value={settings.defaultDir} readOnly tabIndex={-1} /><button className="inline-action" onClick={chooseFolder}>Escolher</button></div><p className="field-hint">Onde os vídeos e músicas baixados por link são salvos.</p></SettingField>
+      <SettingField label="Pasta das imagens convertidas"><div className="input-wrap"><ImageIcon size={24} /><input value={settings.imageDir} readOnly tabIndex={-1} /><button className="inline-action" onClick={chooseImageFolder}>Escolher</button></div><p className="field-hint">Onde as imagens da aba Converter são salvas. Você ainda pode trocar a pasta na própria aba.</p></SettingField>
       <SettingField label="Formato padrão"><div className="segmented compact"><button className={settings.defaultType === 'video' ? 'selected' : ''} onClick={() => updateSettings({ defaultType: 'video' })}><Video size={15} /> Vídeo</button><button className={settings.defaultType === 'audio' ? 'selected' : ''} onClick={() => updateSettings({ defaultType: 'audio' })}><Music2 size={15} /> Áudio</button></div></SettingField>
       <SettingField label="Qualidade de vídeo"><div className="select-wrap"><MenuSelect label="Qualidade padrão" value={String(settings.defaultQuality)} options={qualityOptions} onChange={(value) => updateSettings({ defaultQuality: Number(value) })} /></div></SettingField>
       <SettingField label="Login do navegador"><div className="select-wrap"><MenuSelect label="Login do navegador" value={settings.cookies} options={browserOptions} onChange={(value) => updateSettings({ cookies: value })} /></div><p className="field-hint">Ajuda em posts que pedem login, como Instagram e X.</p></SettingField>
@@ -617,6 +832,18 @@ export default function Page() {
   const [modal, setModal] = useState<ModalState | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
+  const [alertState, setAlertState] = useState<{ message: string; leaving: boolean; nonce: number } | null>(null)
+  const alertTimer = useRef<number | undefined>(undefined)
+
+  // The alert slides in, stays 5 s with a progress bar and then slides out before it is removed.
+  const warn = useCallback((message: string) => {
+    setAlertState({ message, leaving: false, nonce: Date.now() })
+    window.clearTimeout(alertTimer.current)
+    alertTimer.current = window.setTimeout(() => {
+      setAlertState((current) => current && { ...current, leaving: true })
+      alertTimer.current = window.setTimeout(() => setAlertState(null), 350)
+    }, 5000)
+  }, [])
 
   const toast = useCallback((message: string) => {
     setToastMessage(message)
@@ -741,6 +968,7 @@ export default function Page() {
       <nav className="tabs" aria-label="Navegação principal">
         <button aria-label="Baixar" title="Baixar" className={tab === 'download' ? 'active' : ''} onClick={() => go('download')}><Download size={18} /></button>
         <button aria-label="Histórico" title="Histórico" className={tab === 'history' ? 'active' : ''} onClick={() => go('history')}><History size={18} />{history.length > 0 && <span className="tab-count">{activeCount > 0 ? activeCount : history.length}</span>}</button>
+        <button aria-label="Converter imagens" title="Converter imagens" className={tab === 'converter' ? 'active' : ''} onClick={() => go('converter')}><ArrowLeftRight size={18} /></button>
         <button className={`settings-tab ${tab === 'settings' ? 'active' : ''}`} aria-label="Configurações" title="Configurações" onClick={() => go('settings')}><SettingsIcon size={17} /></button>
       </nav>
       <div className="main-col">
@@ -750,6 +978,7 @@ export default function Page() {
         {settings && <>
           <div hidden={tab !== 'download'}><DownloadPage settings={settings} ready={ready} history={history} request={request} onStarted={started} onOpenHistory={() => go('history')} toast={toast} /></div>
           <div hidden={tab !== 'history'}><HistoryPage items={history} onUseLink={useHistoryLink} onOtherFormat={(entry) => setModal({ kind: 'format', entry })} onGoDownload={() => go('download')} refresh={refresh} toast={toast} confirm={confirm} /></div>
+          <div hidden={tab !== 'converter'}><ConverterPage settings={settings} toast={toast} warn={warn} /></div>
           <div hidden={tab !== 'settings'}><SettingsPage settings={settings} updateSettings={updateSettings} status={status} items={history} toast={toast} confirm={confirm} refresh={refresh} /></div>
         </>}
       </div>
@@ -763,5 +992,6 @@ export default function Page() {
     </Modal>}
     {modal?.kind === 'format' && settings && <FormatModal entry={modal.entry} settings={settings} onClose={closeModal} onStarted={started} toast={toast} />}
     {toastMessage && <div className="toast" role="status">{toastMessage}</div>}
+    {alertState && <div key={alertState.nonce} className={`toast-alert ${alertState.leaving ? 'leaving' : ''}`} role="alert"><AlertCircle size={18} /><span>{alertState.message}</span><div className="toast-alert-progress" /></div>}
   </main>
 }

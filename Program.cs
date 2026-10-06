@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.StaticFiles;
 using JacaDownloader;
 
@@ -22,6 +23,7 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
         Store.Load();
+        Converter.CleanTemp();
 
         var web = BuildWebApp();
         web.Start();
@@ -160,6 +162,63 @@ internal static class Program
         app.MapPost("/api/pick-folder", (PickFolderRequest r) =>
             Results.Ok(new { path = PickFolder?.Invoke(r.Initial) }));
 
+        app.MapGet("/api/convert/formats", () => new { sources = Converter.Sources, destinations = Converter.Destinations });
+
+        // The image is uploaded as the raw request body, converted locally and kept in a temp folder until it is saved.
+        app.MapPost("/api/convert", async (HttpContext ctx, string name, string to) =>
+        {
+            ctx.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = null;
+            var from = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+            if (!Converter.Sources.Contains(from)) return Results.BadRequest(new { error = "Este formato de imagem não é suportado." });
+            if (!Converter.Destinations.Contains(to.ToLowerInvariant())) return Results.BadRequest(new { error = "Não dá para converter para este formato." });
+
+            var id = Guid.NewGuid().ToString("N");
+            Directory.CreateDirectory(Converter.TempDir);
+            var source = Path.Combine(Converter.TempDir, id + "-source." + from);
+            try
+            {
+                await using (var file = File.Create(source)) await ctx.Request.Body.CopyToAsync(file);
+                var output = await Converter.ConvertAsync(source, from, to, id);
+                return Results.Ok(new { id, size = new FileInfo(output).Length });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return Results.BadRequest(new { error = "Não foi possível converter este arquivo." });
+            }
+            finally { try { File.Delete(source); } catch { } }
+        });
+
+        app.MapPost("/api/convert/save", (ConvertSaveRequest r) =>
+        {
+            var temp = Converter.FindTemp(r.Id);
+            if (temp == null) return Results.NotFound(new { error = "A conversão não existe mais. Converta de novo." });
+            try
+            {
+                var dir = string.IsNullOrWhiteSpace(r.Dir) ? Store.Current.ImageDir : Path.GetFullPath(r.Dir);
+                Directory.CreateDirectory(dir);
+                var invalid = Path.GetInvalidFileNameChars();
+                var baseName = new string(Path.GetFileNameWithoutExtension(r.Name).Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
+                if (baseName.Length == 0) baseName = "imagem";
+                var ext = Path.GetExtension(temp);
+                var target = Path.Combine(dir, baseName + ext);
+                for (var i = 1; File.Exists(target); i++) target = Path.Combine(dir, $"{baseName} ({i}){ext}");
+                File.Copy(temp, target);
+                return Results.Ok(new { path = target });
+            }
+            catch (Exception ex) { return Results.BadRequest(new { error = "Não foi possível salvar: " + ex.Message }); }
+        });
+
+        app.MapPost("/api/convert/discard", (ConvertDiscardRequest r) =>
+        {
+            var temp = Converter.FindTemp(r.Id);
+            if (temp != null) try { File.Delete(temp); } catch { }
+            return Results.Ok();
+        });
+
         app.MapGet("/api/tools", async () =>
             Tools.Ready ? Results.Ok(await Tools.VersionsAsync()) : notReady);
 
@@ -213,3 +272,5 @@ record InfoRequest(string Url, string? Cookies);
 record DownloadRequest(string Url, string Kind, int? Height, string? OutputDir, string? Cookies);
 record RemoveRequest(bool DeleteFile);
 record PickFolderRequest(string? Initial);
+record ConvertSaveRequest(string Id, string Name, string? Dir);
+record ConvertDiscardRequest(string Id);

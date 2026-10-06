@@ -107,6 +107,63 @@ body::before { content: ''; position: fixed; top: 0; left: 0; right: 12px; heigh
 .toast { position: fixed; z-index: 60; left: 50%; bottom: 26px; transform: translateX(-50%); padding: 11px 18px; border-radius: 11px; border: 1px solid var(--border-light); background: var(--card); color: var(--foreground); font-size: 13px; box-shadow: 0 16px 36px #0008; animation: jaca-toast .2s ease; }
 @keyframes jaca-toast { from { opacity: 0; transform: translate(-50%, 8px); } }
 
+.toast-alert { position: fixed; z-index: 60; top: 64px; right: 22px; display: flex; align-items: flex-start; gap: 10px; max-width: min(360px, calc(100vw - 44px)); padding: 12px 16px; border-radius: 11px; border: 1px solid #e8bc6840; background: var(--card); color: var(--foreground); font-size: 13px; line-height: 1.45; box-shadow: 0 16px 36px #0008; }
+.toast-alert { overflow: hidden; animation: jaca-toast-alert-in .35s cubic-bezier(.2, .8, .2, 1) both; }
+.toast-alert.leaving { animation: jaca-toast-alert-out .35s ease-in both; }
+.toast-alert svg { flex: 0 0 auto; margin-top: 1px; color: #e8bc68; }
+.toast-alert-progress { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: #e8bc68; transform-origin: left; animation: jaca-toast-alert-progress 5s linear both; }
+@keyframes jaca-toast-alert-in { from { opacity: 0; transform: translateX(calc(100% + 30px)); } }
+@keyframes jaca-toast-alert-out { to { opacity: 0; transform: translateX(calc(100% + 30px)); } }
+@keyframes jaca-toast-alert-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.empty-state svg { display: block; margin: 0 auto; }
+
+/* Folder fields only change through the folder picker. */
+.input-wrap input[readonly] { opacity: .55; cursor: default; text-overflow: ellipsis; }
+
+/* Image converter (from the designer's converter screens). */
+.converter-dropzone { min-height: 270px; border: 1px dashed var(--border-light); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: var(--card); transition: .18s ease; cursor: pointer; }
+.converter-dropzone.compact { min-height: 135px; gap: 5px; border-radius: 12px; }
+.converter-dropzone.compact .converter-drop-icon { width: 34px; height: 34px; border-radius: 10px; }
+.converter-dropzone.compact strong { font-size: 13px; }
+.converter-dropzone.compact span { font-size: 11px; }
+.converter-dropzone.compact .primary-button { min-height: 32px; padding: 0 14px; font-size: 12px; }
+.converter-dropzone.dragging, .converter-dropzone:hover { border-color: var(--lime); background: var(--card-2); }
+.converter-drop-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 15px; color: var(--lime); background: #b8ff3215; }
+.converter-dropzone strong { font-size: 15px; }
+.converter-dropzone span { color: var(--muted); font-size: 12px; }
+.converter-page.drop-active .converter-file-list, .converter-page.drop-active .converter-summary { outline: 2px dashed var(--lime); outline-offset: 4px; border-radius: 12px; }
+.converter-page .empty-tip { margin-top: 14px; }
+.formats-preview { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 18px; color: var(--muted); font-size: 11px; }
+.converter-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; }
+.converter-summary > div:first-child { display: flex; align-items: center; gap: 8px; }
+.summary-actions { display: flex; gap: 7px; }
+.converter-file-list { display: flex; flex-direction: column; gap: 7px; margin: 14px 0; max-height: 310px; overflow: auto; }
+.converter-file-row { display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.converter-file-row img, .converter-thumb-fallback { width: 54px; height: 44px; object-fit: cover; border-radius: 7px; background: var(--card-2); flex: 0 0 auto; }
+.converter-thumb-fallback { display: grid; place-items: center; color: var(--muted); }
+.converter-file-info { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.converter-file-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.converter-file-info span { color: var(--muted); font-size: 11px; }
+.converter-destination { padding: 18px; }
+.format-search { margin: 14px 0; }
+.format-groups { display: flex; flex-direction: column; gap: 13px; max-height: 260px; overflow: auto; }
+.format-group-title { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+.format-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.format-chips button { border: 1px solid var(--border-light); border-radius: 7px; padding: 6px 9px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 700; }
+.format-chips button:hover, .format-chips button.selected { color: #152114; background: var(--lime); border-color: var(--lime); }
+.converter-actions { display: flex; gap: 9px; margin-top: 17px; }
+.converter-destination .download-button { margin-top: 0; flex: 1; }
+.download-all-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; border: 1px solid var(--lime); border-radius: 9px; color: var(--lime); background: transparent; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.download-all-button:hover { color: #132016; background: var(--lime); }
+.converter-download-action { color: var(--lime); }
+.converter-download-action:hover { background: #b8ff3218; }
+.converter-page .hero-copy { margin-bottom: 12px; }
+.accepted-formats { display: flex; flex-direction: column; gap: 14px; padding: 18px; margin-top: 18px; }
+.accepted-formats h2 { font-size: 13px; }
+.accepted-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.converter-error { color: var(--danger); }
+
 @media (max-width: 760px) {
   .toolbar { grid-template-columns: 1fr 1fr; }
   .toolbar .search-input { grid-column: 1 / -1; }
@@ -119,4 +176,11 @@ body::before { content: ''; position: fixed; top: 0; left: 0; right: 12px; heigh
   .input-row { flex-direction: column; }
   .toolbar { display: grid; flex-direction: initial; }
   .success-actions .ghost-button { flex: 1 1 100%; }
+  .converter-actions { flex-direction: column; }
+  .download-all-button { min-height: 42px; }
+  .converter-summary { align-items: flex-start; flex-direction: column; }
+  .summary-actions { width: 100%; }
+  .summary-actions button { flex: 1; }
+  .converter-file-row { gap: 8px; }
+  .converter-file-row .badge { display: none; }
 }

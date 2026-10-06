@@ -1,5 +1,5 @@
 export type EntryStatus = 'downloading' | 'done' | 'failed'
-export type Tab = 'download' | 'history' | 'settings'
+export type Tab = 'download' | 'history' | 'converter' | 'settings'
 export type Theme = 'system' | 'light' | 'dark'
 
 export type Entry = {
@@ -37,6 +37,7 @@ export type Info = {
 
 export type Settings = {
   defaultDir: string
+  imageDir: string
   defaultType: 'video' | 'audio'
   defaultQuality: number
   cookies: string
@@ -56,6 +57,20 @@ export async function api<T = unknown>(path: string, body?: unknown): Promise<T>
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error((data as { error?: string }).error || 'Algo deu errado. Tente de novo.')
   return data as T
+}
+
+export type ConvertFormats = { sources: string[]; destinations: string[] }
+
+// Uploads one image to the local backend, which converts it and keeps the result until it is saved.
+export async function convertImage(file: File, to: string): Promise<{ id: string; size: number }> {
+  const response = await fetch(`/api/convert?name=${encodeURIComponent(file.name)}&to=${encodeURIComponent(to.toLowerCase())}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: file,
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error((data as { error?: string }).error || 'Não foi possível converter este arquivo.')
+  return data as { id: string; size: number }
 }
 
 // Sends a command to the native window (minimize, maximize, close, theme).
