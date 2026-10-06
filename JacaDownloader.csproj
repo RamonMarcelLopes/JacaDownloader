@@ -22,6 +22,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
     <EmbeddedResource Include="Assets\app.ico" LogicalName="app.ico" />
+    <EmbeddedResource Include="ui\public\logo.png" LogicalName="logo.png" />
     <!-- The exported Next.js interface (run build.bat first to generate ui\out). -->
     <EmbeddedResource Include="ui\out\**\*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

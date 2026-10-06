@@ -34,6 +34,7 @@ public class MainForm : Form
     static readonly Color LightFrame = Color.FromArgb(243, 246, 242);
 
     readonly WebView2 web = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(9, 12, 13) };
+    readonly Splash splash = new(DarkFrame);
     readonly string url;
     FormWindowState lastState = FormWindowState.Normal;
 
@@ -56,6 +57,8 @@ public class MainForm : Form
         // Always keep the web view profile in the app data folder, never next to the exe.
         web.CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = Path.Combine(Tools.AppDataDir, "webview") };
         Controls.Add(web);
+        Controls.Add(splash);
+        splash.BringToFront();
 
         var saved = LoadState();
         StartPosition = FormStartPosition.Manual;
@@ -270,6 +273,13 @@ public class MainForm : Form
 
             web.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
             web.CoreWebView2.WebMessageReceived += (_, e) => OnWebMessage(e.TryGetWebMessageAsString());
+            web.NavigationCompleted += async (_, _) =>
+            {
+                // Gives the page a moment to paint its first frame before the splash goes away.
+                await Task.Delay(200);
+                splash.Visible = false;
+                splash.Dispose();
+            };
             web.Source = new Uri(url);
         }
         catch (Exception ex)
